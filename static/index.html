@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏠 共享待办清单</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ─── 加入/创建房屋 ─── -->
+<div id="view-join" class="view active">
+  <div class="card join-card">
+    <h1>🏠 共享待办清单</h1>
+    <p class="subtitle">创建房屋，邀请室友一起管理任务</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="create">创建新房</button>
+      <button class="tab" data-tab="join">加入房屋</button>
+    </div>
+
+    <div id="tab-create" class="tab-panel active">
+      <label>房屋名称</label>
+      <input id="create-house-name" placeholder="比如：403宿舍、项目组" maxlength="30">
+      <label>你的昵称</label>
+      <input id="create-nickname" placeholder="比如：小明" maxlength="12">
+      <button class="btn-primary" onclick="createHouse()">创建房屋</button>
+    </div>
+
+    <div id="tab-join" class="tab-panel">
+      <label>邀请码</label>
+      <input id="join-code" placeholder="粘贴邀请码" maxlength="10">
+      <label>你的昵称</label>
+      <input id="join-nickname" placeholder="比如：小红" maxlength="12">
+      <button class="btn-primary" onclick="joinHouse()">加入房屋</button>
+    </div>
+    <p id="join-error" class="error"></p>
+  </div>
+</div>
+
+<!-- ─── 主界面 ─── -->
+<div id="view-main" class="view">
+  <header>
+    <div class="header-left">
+      <h2 id="house-name">🏠</h2>
+      <span class="invite-badge" id="invite-badge" title="点击复制邀请码"></span>
+    </div>
+    <div class="header-right">
+      <span id="user-badge" class="user-badge"></span>
+      <button class="btn-sm" onclick="leaveHouse()">离开</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- 房主侧栏：成员列表 -->
+    <aside id="owner-panel" class="owner-panel hidden">
+      <div class="panel-header">👥 室友清单</div>
+      <div id="member-list" class="member-list"></div>
+    </aside>
+
+    <!-- 任务区 -->
+    <main class="task-area">
+      <div class="task-header">
+        <h3 id="task-owner-label">📋 我的任务</h3>
+        <button class="btn-primary btn-add" onclick="openTaskModal()">+ 新建任务</button>
+      </div>
+
+      <!-- 进度条 -->
+      <div class="progress-section">
+        <div class="progress-info">
+          <span id="progress-text">完成 0/0</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- 筛选栏 -->
+      <div class="filter-bar">
+        <button class="filter active" data-filter="all">全部</button>
+        <button class="filter" data-filter="pending">待完成</button>
+        <button class="filter" data-filter="done">已完成</button>
+        <button class="filter" data-filter="overdue">已逾期</button>
+      </div>
+
+      <div id="task-list" class="task-list"></div>
+      <p id="empty-hint" class="empty-hint hidden">暂无任务，点击「新建任务」开始吧 🎉</p>
+    </main>
+  </div>
+</div>
+
+<!-- ─── 任务弹窗 ─── -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modal-title">新建任务</h3>
+    <input type="hidden" id="modal-task-id">
+    <label>任务标题 <span class="required">*</span></label>
+    <input id="modal-task-title" placeholder="做什么？" maxlength="60">
+    <label>备注</label>
+    <textarea id="modal-task-desc" placeholder="补充说明…" rows="3" maxlength="300"></textarea>
+    <label>截止时间</label>
+    <input id="modal-task-deadline" type="datetime-local">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="saveTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

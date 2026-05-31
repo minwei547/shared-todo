@@ -1,0 +1,14 @@
+{
+  "name": "shared-todo",
+  "version": "1.0.0",
+  "description": "共享待办任务清单系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "express": "^4.21.0",
+    "uuid": "^10.0.0"
+  }
+}
