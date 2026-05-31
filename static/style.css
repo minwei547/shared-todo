@@ -181,6 +181,25 @@ header {
   width: 20px; height: 20px; margin-top: 2px; cursor: pointer;
   accent-color: var(--primary); flex-shrink: 0;
 }
+
+/* ─── 计数器 ─── */
+.task-counter {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  margin-top: 2px;
+}
+.btn-counter {
+  width: 28px; height: 28px; border: 2px solid var(--border); border-radius: 50%;
+  background: #fff; cursor: pointer; font-size: 1rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: .15s; color: var(--primary); line-height: 1;
+}
+.btn-counter:hover:not(:disabled) { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-counter:disabled { opacity: .35; cursor: default; }
+.counter-num {
+  font-size: .9rem; font-weight: 600; min-width: 42px; text-align: center;
+  color: var(--text);
+}
+.counter-num.counter-done { color: var(--success); }
 .task-body { flex: 1; min-width: 0; }
 .task-title { font-size: .95rem; font-weight: 500; }
 .task-desc { font-size: .82rem; color: var(--text-muted); margin-top: 3px; white-space: pre-wrap; }
@@ -220,6 +239,7 @@ header {
 .modal input:focus, .modal textarea:focus { border-color: var(--primary); }
 .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
 .required { color: var(--danger); }
+.hint { color: var(--text-muted); font-weight: normal; font-size: .78rem; }
 
 /* ─── 响应式 ─── */
 @media (max-width: 700px) {

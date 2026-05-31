@@ -240,6 +240,16 @@ function viewMember(memberId, nickname) {
   renderMemberList();
 }
 
+// ─── 快捷 +1 ───
+async function bumpTask(taskId, delta) {
+  await fetch(`/api/house/${state.house.id}/tasks/${taskId}/bump`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ delta }),
+  });
+  await loadTasks(state.viewingMemberId);
+}
+
 // ─── 进度条 ───
 function updateProgress(tasks) {
   const total = tasks.length;
@@ -275,7 +285,10 @@ function renderTasks() {
   emptyHint.classList.add("hidden");
 
   container.innerHTML = tasks.map(t => {
-    const isDone = t.done === 1 || t.done === true;
+    const hasTotal = (t.total || 0) > 0;
+    const doneCount = t.done_count || 0;
+    const totalNum = t.total || 0;
+    const isDone = t.done === 1 || t.done === true || (hasTotal && doneCount >= totalNum);
     const isOverdue = t.deadline && new Date(t.deadline) < now && !isDone;
     const isSoon = t.deadline && !isDone && !isOverdue && (new Date(t.deadline) - now) < 24 * 3600 * 1000;
 
@@ -293,15 +306,20 @@ function renderTasks() {
     // 单任务进度条
     let taskPct = 0;
     let taskPctClass = "task-pbar-empty";
-    if (isDone) {
+    if (hasTotal) {
+      taskPct = totalNum > 0 ? Math.round((doneCount / totalNum) * 100) : 0;
+      if (doneCount >= totalNum) taskPctClass = "task-pbar-done";
+      else if (taskPct >= 90) taskPctClass = "task-pbar-urgent";
+      else taskPctClass = "task-pbar-running";
+    } else if (isDone) {
       taskPct = 100;
       taskPctClass = "task-pbar-done";
     } else if (t.deadline && t.created_at) {
       const created = new Date(t.created_at + "Z");
       const deadline = new Date(t.deadline);
-      const total = deadline - created;
+      const totalMs = deadline - created;
       const elapsed = now - created;
-      taskPct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+      taskPct = Math.min(100, Math.max(0, Math.round((elapsed / totalMs) * 100)));
       if (taskPct >= 90) taskPctClass = "task-pbar-urgent";
       else taskPctClass = "task-pbar-running";
     }
@@ -309,6 +327,19 @@ function renderTasks() {
 
     const isOwnTask = t.member_id === state.memberId;
     const canEdit = isOwnTask || state.isOwner;
+
+    // 数量型任务：显示已完成数 + +/- 按钮
+    let checkboxHtml = "";
+    if (hasTotal) {
+      checkboxHtml = `<div class="task-counter">
+        <button class="btn-counter" onclick="bumpTask('${t.id}', -1)" ${canEdit && doneCount > 0 ? "" : "disabled"}>−</button>
+        <span class="counter-num ${doneCount >= totalNum ? 'counter-done' : ''}">${doneCount}/${totalNum}</span>
+        <button class="btn-counter" onclick="bumpTask('${t.id}', 1)" ${canEdit && !isDone ? "" : "disabled"}>+</button>
+      </div>`;
+    } else {
+      checkboxHtml = `<input type="checkbox" class="task-checkbox" ${isDone ? "checked" : ""}
+             onchange="toggleDone('${t.id}')" ${canEdit ? "" : "disabled"}">`;
+    }
 
     // 显示所属者标签（房主视角看他人任务时）
     let ownerTag = "";
@@ -319,8 +350,7 @@ function renderTasks() {
 
     return `
     <div class="${cardClass}">
-      <input type="checkbox" class="task-checkbox" ${isDone ? "checked" : ""}
-             onchange="toggleDone('${t.id}')" ${canEdit ? "" : "disabled"}>
+      ${checkboxHtml}
       <div class="task-body">
         <div class="task-title">${escapeHtml(t.title)}${ownerTag}</div>
         ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ""}

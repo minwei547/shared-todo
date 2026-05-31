@@ -45,9 +45,20 @@ def init_db():
             description TEXT DEFAULT '',
             deadline TEXT,
             done INTEGER NOT NULL DEFAULT 0,
+            total INTEGER NOT NULL DEFAULT 0,
+            done_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         );
     """)
+    # 兼容旧表：尝试加列
+    try:
+        conn.execute("ALTER TABLE tasks ADD COLUMN total INTEGER NOT NULL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE tasks ADD COLUMN done_count INTEGER NOT NULL DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -117,12 +128,12 @@ def get_tasks(house_id: str, member_id: str):
     conn.close()
     return [dict(t) for t in tasks]
 
-def add_task(house_id: str, member_id: str, title: str, description: str = "", deadline: str = None):
+def add_task(house_id: str, member_id: str, title: str, description: str = "", deadline: str = None, total: int = 0):
     task_id = str(uuid.uuid4())
     conn = get_db()
     conn.execute(
-        "INSERT INTO tasks (id, house_id, member_id, title, description, deadline) VALUES (?,?,?,?,?,?)",
-        [task_id, house_id, member_id, title, description, deadline]
+        "INSERT INTO tasks (id, house_id, member_id, title, description, deadline, total) VALUES (?,?,?,?,?,?,?)",
+        [task_id, house_id, member_id, title, description, deadline, total]
     )
     conn.commit()
     task = conn.execute("SELECT * FROM tasks WHERE id=?", [task_id]).fetchone()
@@ -131,7 +142,7 @@ def add_task(house_id: str, member_id: str, title: str, description: str = "", d
 
 def update_task(task_id: str, house_id: str, member_id: str, **fields):
     """仅任务所属者或房主可更新；房主只能改非自己的任务"""
-    allowed = {"title", "description", "deadline", "done"}
+    allowed = {"title", "description", "deadline", "done", "total", "done_count"}
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return None
@@ -140,9 +151,35 @@ def update_task(task_id: str, house_id: str, member_id: str, **fields):
     if not task:
         conn.close()
         return None
+    # 自动同步 done 状态：数量达到总数时自动完成
+    total = updates.get("total", task["total"])
+    done_count = updates.get("done_count", task["done_count"])
+    if total > 0 and done_count >= total:
+        updates["done"] = 1
+    elif "done_count" in updates or "total" in updates:
+        updates["done"] = 0
     set_clause = ", ".join(f"{k}=?" for k in updates)
     values = list(updates.values()) + [task_id]
     conn.execute(f"UPDATE tasks SET {set_clause} WHERE id=?", values)
+    conn.commit()
+    task = conn.execute("SELECT * FROM tasks WHERE id=?", [task_id]).fetchone()
+    conn.close()
+    return dict(task)
+
+def bump_task(task_id: str, house_id: str, delta: int = 1):
+    """快捷 +1 已完成数"""
+    conn = get_db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=? AND house_id=?", [task_id, house_id]).fetchone()
+    if not task:
+        conn.close()
+        return None
+    new_count = task["done_count"] + delta
+    if new_count < 0:
+        new_count = 0
+    total = task["total"]
+    done = 1 if (total > 0 and new_count >= total) else 0
+    conn.execute("UPDATE tasks SET done_count=?, done=? WHERE id=?",
+                 [new_count, done, task_id])
     conn.commit()
     task = conn.execute("SELECT * FROM tasks WHERE id=?", [task_id]).fetchone()
     conn.close()

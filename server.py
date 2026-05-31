@@ -94,7 +94,8 @@ def api_add_task(house_id):
         member_id,
         title,
         (data.get("description") or "").strip(),
-        data.get("deadline") or None
+        data.get("deadline") or None,
+        int(data.get("total") or 0)
     )
     return jsonify(task)
 
@@ -106,8 +107,18 @@ def api_update_task(house_id, task_id):
 
     task = db.update_task(task_id, house_id, member_id, **{
         k: v for k, v in data.items()
-        if k in ("title", "description", "deadline", "done")
+        if k in ("title", "description", "deadline", "done", "total", "done_count")
     })
+    if task is None:
+        return jsonify({"error": "任务不存在"}), 404
+    return jsonify(task)
+
+@app.route("/api/house/<house_id>/tasks/<task_id>/bump", methods=["POST"])
+def api_bump_task(house_id, task_id):
+    """快捷 +1 / -1"""
+    data = request.json or {}
+    delta = int(data.get("delta", 1))
+    task = db.bump_task(task_id, house_id, delta)
     if task is None:
         return jsonify({"error": "任务不存在"}), 404
     return jsonify(task)
@@ -122,7 +133,7 @@ def api_owner_edit_task(house_id, task_id):
 
     task = db.update_task(task_id, house_id, data.get("member_id", ""), **{
         k: v for k, v in data.items()
-        if k in ("title", "description", "deadline", "done")
+        if k in ("title", "description", "deadline", "done", "total", "done_count")
     })
     if task is None:
         return jsonify({"error": "任务不存在"}), 404
