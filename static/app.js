@@ -87,7 +87,7 @@ function showMain() {
   document.getElementById("house-name").textContent = "🏠 " + state.house.name;
   document.getElementById("invite-badge").textContent = state.house.invite_code;
   const ub = document.getElementById("user-badge");
-  ub.textContent = state.nickname;
+  ub.innerHTML = `${avatarHtml(state.nickname, 32)} ${escapeHtml(state.nickname)}`;
   ub.className = "user-badge" + (state.isOwner ? " owner" : "");
   if (state.isOwner) {
     document.getElementById("owner-panel").classList.remove("hidden");
@@ -208,12 +208,12 @@ function renderMemberList() {
   if (me) {
     html += `<div class="member-item me ${state.viewingMemberId === me.id ? 'active' : ''}"
              onclick="viewMember('${me.id}', '${escapeHtml(me.nickname)}')">
-             <span class="dot"></span>${escapeHtml(me.nickname)}（我）</div>`;
+             ${avatarHtml(me.nickname, 26)}${escapeHtml(me.nickname)}（我）</div>`;
   }
   others.forEach(m => {
     html += `<div class="member-item ${state.viewingMemberId === m.id ? 'active' : ''}"
              onclick="viewMember('${m.id}', '${escapeHtml(m.nickname)}')">
-             <span class="dot"></span>${escapeHtml(m.nickname)}</div>`;
+             ${avatarHtml(m.nickname, 26)}${escapeHtml(m.nickname)}</div>`;
   });
 
   if (others.length === 0 && !me) {
@@ -437,6 +437,21 @@ function toLocalDatetime(d) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${y}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+// ─── 头像 ───
+const AVATAR_COLORS = ['#4f6ef7','#e74c3c','#27ae60','#f39c12','#8e44ad','#16a085','#e67e22','#2980b9','#c0392b','#2ecc71'];
+function avatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+function avatarChar(name) {
+  return (name || '?').charAt(0).toUpperCase();
+}
+function avatarHtml(name, size) {
+  const cls = size <= 26 ? 'avatar avatar-sm' : 'avatar';
+  return `<span class="${cls}" style="background:${avatarColor(name)}">${avatarChar(name)}</span>`;
 }
 
 function escapeHtml(str) {
