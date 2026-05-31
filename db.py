@@ -59,6 +59,16 @@ def init_db():
         conn.execute("ALTER TABLE tasks ADD COLUMN done_count INTEGER NOT NULL DEFAULT 0")
     except sqlite3.OperationalError:
         pass
+
+        CREATE TABLE IF NOT EXISTS messages (
+            id TEXT PRIMARY KEY,
+            house_id TEXT NOT NULL REFERENCES houses(id),
+            from_id TEXT NOT NULL REFERENCES members(id),
+            to_id TEXT NOT NULL REFERENCES members(id),
+            content TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+    """)
     conn.commit()
     conn.close()
 
@@ -204,3 +214,53 @@ def get_all_tasks_by_member(house_id: str):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+# ─── 消息操作 ───
+
+def send_message(house_id: str, from_id: str, to_id: str, content: str):
+    msg_id = str(uuid.uuid4())
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO messages (id, house_id, from_id, to_id, content) VALUES (?,?,?,?,?)",
+        [msg_id, house_id, from_id, to_id, content]
+    )
+    conn.commit()
+    msg = conn.execute("SELECT * FROM messages WHERE id=?", [msg_id]).fetchone()
+    conn.close()
+    return dict(msg)
+
+def get_chat(house_id: str, user_a: str, user_b: str, limit: int = 50):
+    """获取两人的聊天记录"""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT m.*, f.nickname as from_name, t.nickname as to_name
+           FROM messages m
+           JOIN members f ON m.from_id = f.id
+           JOIN members t ON m.to_id = t.id
+           WHERE m.house_id=?
+             AND ((m.from_id=? AND m.to_id=?) OR (m.from_id=? AND m.to_id=?))
+           ORDER BY m.created_at ASC LIMIT ?""",
+        [house_id, user_a, user_b, user_b, user_a, limit]
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_unread_counts(house_id: str, member_id: str, since_id: str = None):
+    """获取每个成员的未读消息数"""
+    conn = get_db()
+    if since_id:
+        rows = conn.execute(
+            """SELECT from_id, COUNT(*) as cnt FROM messages
+               WHERE house_id=? AND to_id=? AND id > ?
+               GROUP BY from_id""",
+            [house_id, member_id, since_id]
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT from_id, COUNT(*) as cnt FROM messages
+               WHERE house_id=? AND to_id=?
+               GROUP BY from_id""",
+            [house_id, member_id]
+        ).fetchall()
+    conn.close()
+    return {r["from_id"]: r["cnt"] for r in rows}

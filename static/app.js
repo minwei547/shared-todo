@@ -507,3 +507,152 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+// ═══════════════ 聊天 ═══════════════
+
+let chatState = {
+  open: false,
+  chatWithId: null,
+  chatWithName: "",
+  messages: [],
+  pollTimer: null,
+  lastMsgId: null,
+};
+
+function toggleChat() {
+  chatState.open = !chatState.open;
+  const panel = document.getElementById("chat-panel");
+  if (chatState.open) {
+    panel.classList.remove("hidden");
+    renderChatMembers();
+    if (chatState.chatWithId) selectChatMember(chatState.chatWithId, chatState.chatWithName);
+    startChatPoll();
+    document.getElementById("chat-badge").classList.add("hidden");
+  } else {
+    panel.classList.add("hidden");
+    stopChatPoll();
+  }
+}
+
+function renderChatMembers() {
+  const container = document.getElementById("chat-member-list");
+  const others = state.members.filter(m => m.id !== state.memberId);
+  if (others.length === 0) {
+    container.innerHTML = '<div style="padding:10px;color:var(--text-muted);font-size:.78rem">暂无成员</div>';
+    return;
+  }
+  container.innerHTML = others.map(m => `
+    <div class="chat-member-item ${chatState.chatWithId === m.id ? 'active' : ''}"
+         onclick="selectChatMember('${m.id}','${escapeHtml(m.nickname)}')">
+      ${avatarHtml(m.nickname, 22)}
+      <span>${escapeHtml(m.nickname)}</span>
+      <span class="unread-dot hidden" id="unread-${m.id}"></span>
+    </div>
+  `).join("");
+}
+
+function selectChatMember(memberId, name) {
+  chatState.chatWithId = memberId;
+  chatState.chatWithName = name;
+  document.getElementById("chat-with-name").textContent = "与 " + name + " 私聊中";
+  document.getElementById("chat-input").focus();
+  renderChatMembers();
+  loadChatMessages();
+}
+
+async function loadChatMessages() {
+  if (!chatState.chatWithId) return;
+  const res = await fetch(
+    `/api/house/${state.house.id}/messages?a=${state.memberId}&b=${chatState.chatWithId}`
+  );
+  if (res.ok) {
+    chatState.messages = await res.json();
+    if (chatState.messages.length > 0) {
+      chatState.lastMsgId = chatState.messages[chatState.messages.length - 1].id;
+    }
+    renderChatMessages();
+  }
+}
+
+function renderChatMessages() {
+  const container = document.getElementById("chat-messages");
+  if (chatState.messages.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 0;font-size:.85rem">还没有消息，打个招呼吧 👋</div>';
+    return;
+  }
+  container.innerHTML = chatState.messages.map(m => {
+    const isMine = m.from_id === state.memberId;
+    const time = m.created_at ? m.created_at.substring(11, 16) : "";
+    return `<div class="chat-msg ${isMine ? 'mine' : 'other'}">
+      <div>${escapeHtml(m.content)}</div>
+      <div class="msg-time">${time}</div>
+    </div>`;
+  }).join("");
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById("chat-input");
+  const content = input.value.trim();
+  if (!content || !chatState.chatWithId) return;
+  input.value = "";
+
+  await fetch(`/api/house/${state.house.id}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from_id: state.memberId,
+      to_id: chatState.chatWithId,
+      content,
+    }),
+  });
+  await loadChatMessages();
+}
+
+async function checkUnread() {
+  if (!chatState.open || !chatState.chatWithId) return;
+  const since = chatState.lastMsgId;
+  const res = await fetch(
+    `/api/house/${state.house.id}/messages/unread?member_id=${state.memberId}&since=${since || ""}`
+  );
+  if (res.ok) {
+    const counts = await res.json();
+    // 更新当前聊天
+    if (counts[chatState.chatWithId] > 0) {
+      await loadChatMessages();
+    }
+    // 更新成员列表的未读红点
+    Object.keys(counts).forEach(fromId => {
+      const dot = document.getElementById("unread-" + fromId);
+      if (dot && counts[fromId] > 0) dot.classList.remove("hidden");
+    });
+  }
+  // 检查全局未读（聊外面时）
+  if (!chatState.open) {
+    const res2 = await fetch(
+      `/api/house/${state.house.id}/messages/unread?member_id=${state.memberId}`
+    );
+    if (res2.ok) {
+      const allCounts = await res2.json();
+      const total = Object.values(allCounts).reduce((a, b) => a + b, 0);
+      const badge = document.getElementById("chat-badge");
+      if (total > 0) {
+        badge.textContent = total > 99 ? "99+" : total;
+        badge.classList.remove("hidden");
+      }
+    }
+  }
+}
+
+function startChatPoll() {
+  stopChatPoll();
+  checkUnread();
+  chatState.pollTimer = setInterval(checkUnread, 3000);
+}
+
+function stopChatPoll() {
+  if (chatState.pollTimer) {
+    clearInterval(chatState.pollTimer);
+    chatState.pollTimer = null;
+  }
+}

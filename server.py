@@ -152,6 +152,37 @@ def api_delete_task(house_id, task_id):
         return jsonify({"error": "任务不存在"}), 404
     return jsonify({"ok": True})
 
+# ─── 聊天 ───
+
+@app.route("/api/house/<house_id>/messages", methods=["POST"])
+def api_send_message(house_id):
+    data = request.json or {}
+    from_id = data.get("from_id", "")
+    to_id = data.get("to_id", "")
+    content = (data.get("content") or "").strip()
+    if not from_id or not to_id or not content:
+        return jsonify({"error": "缺少参数"}), 400
+    msg = db.send_message(house_id, from_id, to_id, content)
+    return jsonify(msg)
+
+@app.route("/api/house/<house_id>/messages")
+def api_get_chat(house_id):
+    user_a = request.args.get("a", "")
+    user_b = request.args.get("b", "")
+    if not user_a or not user_b:
+        return jsonify({"error": "缺少参数"}), 400
+    msgs = db.get_chat(house_id, user_a, user_b)
+    return jsonify(msgs)
+
+@app.route("/api/house/<house_id>/messages/unread")
+def api_unread(house_id):
+    member_id = request.args.get("member_id", "")
+    since = request.args.get("since") or None
+    if not member_id:
+        return jsonify({})
+    counts = db.get_unread_counts(house_id, member_id, since)
+    return jsonify(counts)
+
 if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=5000, debug=debug)

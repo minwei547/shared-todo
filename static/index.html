@@ -46,6 +46,9 @@
       <span class="invite-badge" id="invite-badge" title="点击复制邀请码"></span>
     </div>
     <div class="header-right">
+      <button id="chat-toggle" class="btn-chat" onclick="toggleChat()" title="私聊">
+        💬 <span id="chat-badge" class="chat-badge hidden">0</span>
+      </button>
       <span id="user-badge" class="user-badge"></span>
       <button class="btn-sm" onclick="leaveHouse()">离开</button>
     </div>
@@ -87,6 +90,25 @@
       <div id="task-list" class="task-list"></div>
       <p id="empty-hint" class="empty-hint hidden">暂无任务，点击「新建任务」开始吧 🎉</p>
     </main>
+  </div>
+</div>
+
+<!-- ─── 聊天面板 ─── -->
+<div id="chat-panel" class="chat-panel hidden">
+  <div class="chat-panel-header">
+    <span>💬 私聊</span>
+    <button class="btn-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-body">
+    <div class="chat-member-list" id="chat-member-list"></div>
+    <div class="chat-main">
+      <div class="chat-main-header" id="chat-with-name">选择一个成员开始聊天</div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-bar">
+        <input id="chat-input" placeholder="输入消息…" maxlength="500" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn-send" onclick="sendChat()">发送</button>
+      </div>
+    </div>
   </div>
 </div>
 
