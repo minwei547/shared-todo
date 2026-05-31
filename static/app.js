@@ -290,6 +290,23 @@ function renderTasks() {
       deadlineHtml = `<span class="task-deadline ${cls}">⏰ ${formatDate(d)}</span>`;
     }
 
+    // 单任务进度条
+    let taskPct = 0;
+    let taskPctClass = "task-pbar-empty";
+    if (isDone) {
+      taskPct = 100;
+      taskPctClass = "task-pbar-done";
+    } else if (t.deadline && t.created_at) {
+      const created = new Date(t.created_at + "Z");
+      const deadline = new Date(t.deadline);
+      const total = deadline - created;
+      const elapsed = now - created;
+      taskPct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+      if (taskPct >= 90) taskPctClass = "task-pbar-urgent";
+      else taskPctClass = "task-pbar-running";
+    }
+    const pbarHtml = `<div class="task-pbar"><div class="task-pbar-fill ${taskPctClass}" style="width:${taskPct}%"></div></div>`;
+
     const isOwnTask = t.member_id === state.memberId;
     const canEdit = isOwnTask || state.isOwner;
 
@@ -308,6 +325,7 @@ function renderTasks() {
         <div class="task-title">${escapeHtml(t.title)}${ownerTag}</div>
         ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ""}
         <div class="task-meta">${deadlineHtml}</div>
+        ${pbarHtml}
       </div>
       ${canEdit ? `
       <div class="task-actions">

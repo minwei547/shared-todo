@@ -191,6 +191,14 @@ header {
 .task-owner-tag { font-size: .75rem; background: #eef0ff; color: var(--primary); padding: 1px 8px; border-radius: 10px; }
 .task-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
+/* ─── 单任务进度条 ─── */
+.task-pbar { height: 4px; background: #eee; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.task-pbar-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
+.task-pbar-fill.task-pbar-empty { background: transparent; }
+.task-pbar-fill.task-pbar-running { background: var(--primary); }
+.task-pbar-fill.task-pbar-urgent { background: var(--danger); }
+.task-pbar-fill.task-pbar-done { background: var(--success); }
+
 .empty-hint { text-align: center; color: var(--text-muted); padding: 40px 0; font-size: .9rem; }
 
 /* ─── 弹窗 ─── */
